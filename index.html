@@ -1,938 +1,476 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>小兔鲜首页</title>
-    <!-- 引入网页图标 -->
-     <link rel="icon" href="./favicon.ico">
-     <!-- 引入字体图标 -->
-      <link rel="stylesheet" href="./iconfont/iconfont.css">
-    <!-- 引入公共样式表  首先是初始化css 之后是公共样式 最后是index页面样式-->
-    <link rel="stylesheet" href="./CSS/base.css">
-    <link rel="stylesheet" href="./CSS/common.css">
-    <link rel="stylesheet" href="./CSS/index.css">
+    <title>网页音乐播放器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body, html {
+            height: 100%;
+            overflow: hidden;
+            font-family: "Microsoft YaHei", sans-serif;
+            color: #fff;
+        }
+
+        .blur-bg {
+            position: fixed;
+            inset: 0;
+            background: url('https://picsum.photos/id/1019/1920/1080') center/cover no-repeat;
+            filter: blur(30px) brightness(0.6);
+            z-index: -1;
+            transition: background-image 0.5s ease;
+        }
+
+        .container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 75vh;
+            gap: 100px;
+            padding: 0 50px;
+            flex-wrap: wrap;
+        }
+
+        .record-container {
+            width: 350px;
+            height: 350px;
+        }
+
+        .record {
+            width: 100%;
+            height: 100%;
+            background: #000;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 0 40px rgba(0,0,0,0.6);
+        }
+
+        #albumCover {
+            width: 240px;
+            height: 240px;
+            border-radius: 50%;
+            background: url('https://picsum.photos/id/1019/300/300') center/cover no-repeat;
+        }
+
+        .rotate-playing {
+            animation: rotate 20s linear infinite;
+            animation-play-state: running;
+        }
+
+        .rotate-paused {
+            animation: rotate 20s linear infinite;
+            animation-play-state: paused;
+        }
+
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .info-container h1 {
+            font-size: 4rem;
+            font-weight: normal;
+            margin-bottom: 10px;
+        }
+
+        .info-container p {
+            font-size: 1.2rem;
+            opacity: 0.7;
+        }
+
+        .control-bar {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(10px);
+            padding: 20px 40px;
+        }
+
+        .progress-bar {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .progress {
+            flex: 1;
+            height: 3px;
+            background: rgba(255,255,255,0.2);
+            cursor: pointer;
+        }
+
+        .progress-fill {
+            height: 100%;
+            width: 0%;
+            background: #fff;
+            transition: width 0.1s;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .left-controls, .right-controls {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .ctrl-btn {
+            background: transparent;
+            border: none;
+            color: #fff;
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: opacity 0.2;
+        }
+
+        .ctrl-btn:hover {
+            opacity: 0.8;
+        }
+
+        .play-btn {
+            font-size: 2rem;
+            border: 2px solid #fff;
+            border-radius: 50%;
+            padding: 8px 12px;
+        }
+
+        .volume-control {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        #volumeSlider {
+            width: 80px;
+            height: 3px;
+            background: rgba(255,255,255,0.2);
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        #volumeSlider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 10px;
+            height: 10px;
+            background: #fff;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .playlist {
+            position: fixed;
+            top: 0;
+            right: -300px;
+            width: 300px;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            transition: 0.3s;
+            padding: 20px;
+            z-index: 10;
+        }
+
+        .playlist.active {
+            right: 0;
+        }
+
+        .playlist-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .playlist-header button {
+            background: none;
+            border: none;
+            color: #fff;
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+
+        .playlist-item {
+            padding: 12px;
+            cursor: pointer;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .playlist-item:hover {
+            background: rgba(255,255,255,0.1);
+        }
+
+        .playlist-item.active {
+            color: #1db954;
+            font-weight: bold;
+            background: rgba(255,255,255,0.1);
+        }
+
+        .speed-text {
+            font-size: 1rem;
+            cursor: pointer;
+            padding: 4px 8px;
+        }
+    </style>
 </head>
 <body>
-    <!-- 1.网页的头部 -->
-     <!-- 1.1 头部导航栏 -->
-     <div class="shortcut">
-        <div class="w">
-        <ul>
-            <li><a href="#">请先登录</a></li>
-            <li class="line"></li>
-            <li><a href="#">免费注册</a></li>
-            <li class="line"></li>
-            <li><a href="#">我的订单</a></li>
-            <li class="line"></li>
-            <li><a href="#">会员中心</a></li>
-            <li class="line"></li>
-            <li><a href="#">帮助中心</a></li>
-            <li class="line"></li>
-            <li><a href="#">在线客服</a></li>
-            <li class="line"></li>
-            <li class="phone"><a href="#"><i class="iconfont icon-mobile-phone"></i>手机版</a></li>
-        </ul>
-        </div>
-     </div>
-     <!-- 1.2头部header制作 -->
-      <header class="header w">
-        <div class="logo">
-            <h1>
-                <a href="index.html" title="小兔鲜儿">小兔鲜儿</a>
-            </h1>
-        </div>
-        <ul class="nav">
-            <li><a href="#">首页</a></li>
-            <li><a href="#">生鲜</a></li>
-            <li><a href="#">美食</a></li>
-            <li><a href="#">餐厨</a></li>
-            <li><a href="#">电器</a></li>
-            <li><a href="#">居家</a></li>
-            <li><a href="#">洗护</a></li>
-            <li><a href="#">孕婴</a></li>
-            <li><a href="#">服装</a></li>
-        </ul>
-        <div class="search">
-            <i class="iconfont icon-search"></i>
-            <input type="text" placeholder="搜一搜">
-        </div>
-        <div class="car">
-            <span>2</span>
-            <i class="iconfont icon-cart-full"></i>
-        </div>
-      </header>
-      <!-- 首页主体 -->
-       <!-- entery模块制作 -->
-        <div class="entery">
-            <div class="w">
-                <div class="category">
-                    <ul>
-                        <li>
-                            <p><a href="#">生鲜</a><a href="#">水果</a><a href="#">蔬菜</a></p>
-                            <i class="iconfont icon-arrow-right-bold"></i>
-                        </li>
-                        <li>
-                            <p><a href="#">美食</a><a href="#">面点</a><a href="#">干果</a></p>
-                            <i class="iconfont icon-arrow-right-bold"></i>
-                        </li>
-                        <li>
-                            <p><a href="#">餐厨</a><a href="#">平底锅</a><a href="#">碗</a></p>
-                            <i class="iconfont icon-arrow-right-bold"></i>
-                        </li>
-                        <li>
-                            <p><a href="#">电器</a><a href="#">数码产品</a></p>
-                            <i class="iconfont icon-arrow-right-bold"></i>
-                        </li>
-                        <li>
-                            <p><a href="#">居家</a><a href="#">床品</a><a href="#">四件套</a><a href="#">被枕</a></p>
-                            <i class="iconfont icon-arrow-right-bold"></i>
-                        </li>
-                        <li>
-                            <p><a href="#">洗护</a><a href="#">洗发</a><a href="#">洗护</a><a href="#">美妆</a></p>
-                            <i class="iconfont icon-arrow-right-bold"></i>
-                        </li>
-                        <li>
-                            <p><a href="#">孕婴</a><a href="#">奶粉</a><a href="#">玩具</a></p>
-                            <i class="iconfont icon-arrow-right-bold"></i>
-                        </li>
-                        <li>
-                            <p><a href="#">服饰</a><a href="#">女装</a><a href="#">男装</a></p>
-                            <i class="iconfont icon-arrow-right-bold"></i>
-                        </li>
-                        <li>
-                            <p><a href="#">杂货</a><a href="#">户外</a><a href="#">图书</a></p>
-                            <i class="iconfont icon-arrow-right-bold"></i>
-                        </li>
-                        <li>
-                            <p><a href="#">品牌</a><a href="#">品牌制造</a></p>
-                            <i class="iconfont icon-arrow-right-bold"></i>
-                        </li>
-                    </ul>
-                </div>
-                <div class="banner">
-                    <ul>
-                        <li>
-                            <img src="./uploads/banner1.png" alt="">
-                        </li>
-                    </ul>
-                    <!-- 小圆点 -->
-                    <ul class="circle">
-                        <li></li>
-                        <li></li>
-                        <li></li>
-                    </ul>
-                    <!-- 左右按钮 -->
-                    <a href="#" class="prev"><i class="iconfont icon-arrow-left-bold"></i></a>
-                    <a href="#" class="next"><i class="iconfont icon-arrow-right-bold"></i></a>
-                </div>
+    <div class="blur-bg" id="blurBg"></div>
+
+    <div class="container">
+        <div class="record-container">
+            <div class="record">
+                <div id="albumCover" class="rotate-paused"></div>
             </div>
         </div>
-        <!-- 新鲜好物模块 -->
-        <div class="w fresh">
-            <div class="box-hd">
-                <h2>
-                    新鲜好物 
-                    <small>新鲜出炉 品质靠谱</small>
-                </h2>
-                <a href="#">查看更多<i class="iconfont icon-arrow-right-bold"></i></a>
+
+        <div class="info-container">
+            <h1 id="songTitle">晴天</h1>
+            <p id="songAuthor">周杰伦</p>
+        </div>
+    </div>
+
+    <div class="control-bar">
+        <div class="progress-bar">
+            <span id="currentTime">00:00</span>
+            <div class="progress" id="progressBar">
+                <div class="progress-fill" id="progressFill"></div>
             </div>
-            <div class="box-bd">
-                <ul>
-                   <a href="#">
-                     <li>
-                        <img src="./uploads/goods1.png" alt="">
-                        <h3 class="title">KN95级莫兰迪色防护口罩你值得拥有</h3>
-                        <p class="price"> <small>￥</small> 79</p>
-                    </li>
-                   </a>
-                    <a href="#">
-                     <li>
-                        <img src="./uploads/goods2.png" alt="">
-                        <h3 class="title">紫檀外独板三层普洱茶盒</h3>
-                        <p class="price"> <small>￥</small> 566</p>
-                    </li>
-                   </a>
-                    <a href="#">
-                     <li>
-                        <img src="./uploads/goods3.png" alt="">
-                        <h3 class="title">法拉蒙高颜值记事本可定制</h3>
-                        <p class="price"> <small>￥</small> 58</p>
-                    </li>
-                   </a>
-                    <a href="#">
-                     <li>
-                        <img src="./uploads/goods4.png" alt="">
-                        <h3 class="title">科技布布艺沙发</h3>
-                        <p class="price"> <small>￥</small> 3579</p>
-                    </li>
-                   </a>
-                </ul>
+            <span id="totalTime">00:00</span>
+        </div>
+
+        <div class="controls">
+            <div class="left-controls">
+                <button id="playModeBtn" class="ctrl-btn">🔁</button>
+                <button id="prevBtn" class="ctrl-btn">⏮</button>
+                <button id="playBtn" class="ctrl-btn play-btn">▶</button>
+                <button id="nextBtn" class="ctrl-btn">⏭</button>
+                <div class="volume-control">
+                    <button id="volumeBtn" class="ctrl-btn">🔊</button>
+                    <input type="range" id="volumeSlider" min="0" max="100" value="100">
+                </div>
+            </div>
+
+            <div class="right-controls">
+                <span id="speedText" class="speed-text">1.0X</span>
+                <button id="listBtn" class="ctrl-btn">☰</button>
             </div>
         </div>
-        <!-- 人气推荐 -->
-         <div class="w hot">
-            <div class="box-hd">
-                <h2>
-                    人气推荐 
-                    <small>人气爆款 不容错过</small>
-                </h2>
-            </div>
-            <div class="box-bd">
-                <ul>
-                   <a href="#">
-                     <li>
-                        <img src="./uploads/recommend1.png" alt="">
-                        <h3 class="title">特惠推荐</h3>
-                        <p class="desc">我猜得到 你的需要</p>
-                    </li>
-                   </a>
-                    <a href="#">
-                     <li>
-                        <img src="./uploads/recommend2.png" alt="">
-                        <h3 class="title">爆款推荐</h3>
-                        <p class="desc">人气好物推荐</p>
-                    </li>
-                   </a>
-                    <a href="#">
-                     <li>
-                        <img src="./uploads/recommend3.png" alt="">
-                        <h3 class="title">节日礼品一站买全</h3>
-                        <p class="desc">编辑尽心整理推荐</p>
-                    </li>
-                   </a>
-                    <a href="#">
-                     <li>
-                        <img src="./uploads/recommend4.png" alt="">
-                        <h3 class="title">鲜花园艺</h3>
-                        <p class="desc">给生活增加仪式感</p>
-                    </li>
-                   </a>
-                </ul>
-            </div>
+    </div>
+
+    <div class="playlist" id="playlist">
+        <div class="playlist-header">
+            <h3>播放列表</h3>
+            <button id="closeListBtn">×</button>
         </div>
-        <!-- 热门品牌 -->
-        <div class="brand">
-            <div class="w">
-                <div class="brand-hd box-hd">
-                    <h2>
-                        热门品牌
-                        <small>国际经典 品质认证</small>
-                    </h2>
-                    <div class="direction">
-                    <div class="left"><button><i class="iconfont icon-arrow-left-bold"></i></button></div>
-                    <div class="right"><button><i class="iconfont icon-arrow-right-bold"></i></button></div>
-                    </div>
-                </div>
-                <div class="brand-bd">
-                    <ul>
-                        <a href="#"><li><img src="./uploads/hot1.png" alt=""></li></a>
-                        <a href="#"><li><img src="./uploads/hot2.png" alt=""></li></a>
-                        <a href="#"><li><img src="./uploads/hot3.png" alt=""></li></a>
-                        <a href="#"><li><img src="./uploads/hot4.png" alt=""></li></a>
-                        <a href="#"><li><img src="./uploads/hot5.png" alt=""></li></a>
-                    </ul>
-                </div>
-            </div>
-        </div>
-        <!-- 生鲜 -->
-         <div class="food">
-            <div class="w">
-                <div class="food-title box-hd">
-                    <h2>生鲜</h2>
-                    <div class="option">
-                        <div class="option-left">
-                        <ul>
-                            <li><a href="#">热门</a></li>
-                            <li><a href="#">蔬菜</a></li>
-                            <li><a href="#">肉禽蛋</a></li>
-                            <li><a href="#">水果</a></li>
-                            <li><a href="#">海鲜</a></li>
-                            <li><a href="#">零食</a></li>
-                            <li><a href="#">饮料</a></li>
-                        </ul>
-                        </div>
-                        <div class="option-right">
-                            <a href="#">查看全部</a><i class="iconfont icon-arrow-right-bold"></i>
-                        </div>
-                    </div>
-                </div>
-                <div class="food-bd">
-                    <div class="food-bd-left">
-                        <img src="./uploads/fresh_left.png" alt="">
-                    </div>
-                    <div class="food-bd-right">
-                        <ul>
-                            <a href="#">
-                                <li>
-                                    <img src="./uploads/fresh1.png" alt="">
-                                    <div class="info">
-                                    <p>双味千层，手抓饼烤肉组合</p>
-                                    <p>240g/袋 4片装</p>
-                                    <p>加热即食</p>
-                                    </div>
-                                    <div class="price">
-                                        ￥ <p>89.99</p>
-                                    </div>
-                                </li>
-                            </a>
-                            <a href="#">
-                                <li>
-                                    <img src="./uploads/fresh2.png" alt="">
-                            <div class="info">
-                                    <p>云南甘蔗慢熬红糖馒头</p>
-                                    <p>220g/袋 5个装</p>
-                                    <p>加热即食</p>
-                                    </div>
-                                    <div class="price">
-                                        ￥ <p>9.00</p>
-                                    </div>
-                                </li>
-                            </a>
-                            <a href="#">
-                                <li>
-                                    <img src="./uploads/fresh3.png" alt="">
-                            <div class="info">
-                                    <p>日式风味小圆饼</p>
-                                    <p>圆形【海盐味】</p>
-                                    <p>糖果零食</p>
-                                    </div>
-                                    <div class="price">
-                                        ￥ <p>588.00</p>
-                                    </div>
-                                </li>
-                            </a>
-                            <a href="#">
-                                <li>
-                                    <img src="./uploads/fresh4.png" alt="">
-                            <div class="info">
-                                    <p>全麦奶油浓香小面包</p>
-                                    <p>50g*12袋</p>
-                                    <p>美味西点</p>
-                                    </div>
-                                    <div class="price">
-                                        ￥ <p>69.00</p>
-                                    </div>
-                                </li>
-                            </a>
-                            <a href="#">
-                                <li>
-                                    <img src="./uploads/fresh5.png" alt="">
-                            <div class="info">
-                                    <p>秘制外皮五福摩提大福点心</p>
-                                    <p>150g/盒</p>
-                                    <p>美味西点</p>
-                                    </div>
-                                    <div class="price">
-                                        ￥ <p>39.99</p>
-                                    </div>
-                                </li>
-                            </a>
-                            <a href="#">
-                                <li>
-                                    <img src="./uploads/fresh6.png" alt="">
-                            <div class="info">
-                                    <p>水果面膜韩国蜂蜜柚子茶560g/瓶</p>
-                                    <p>冲调饮品</p>
-                                    <p></p>
-                                    </div>
-                                    <div class="price">
-                                        ￥ <p>69.00</p>
-                                    </div>
-                                </li>
-                            </a>
-                            <a href="#">
-                                <li>
-                                    <img src="./uploads/fresh7.png" alt="">
-                            <div class="info">
-                                    <p>浓情比利时巧克力礼盒装</p>
-                                    <p>205克/盒</p>
-                                    <p>糖果零食</p>
-                                    </div>
-                                    <div class="price">
-                                        ￥ <p>120.00</p>
-                                    </div>
-                                </li>
-                            </a>
-                            <a href="#">
-                                <li>
-                                    <img src="./uploads/fresh8.png" alt="">
-                            <div class="info">
-                                    <p>抹茶奶油小蛋糕礼盒装</p>
-                                    <p>220克/盒</p>
-                                    <p>美味西点</p>
-                                    </div>
-                                    <div class="price">
-                                        ￥ <p>60.00</p>
-                                    </div>
-                                </li>
-                            </a>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-         </div>
-         <!-- 服饰 -->
-         <div class="food">
-            <div class="w">
-                <div class="food-title box-hd">
-                    <h2>服饰</h2>
-                    <div class="option">
-                        <div class="option-left">
-                        <ul>
-                            <li><a href="#">热门</a></li>
-                            <li><a href="#">女装</a></li>
-                            <li><a href="#">奢侈品</a></li>
-                            <li><a href="#">裤装</a></li>
-                            <li><a href="#">衬衫</a></li>
-                            <li><a href="#">T恤</a></li>
-                            <li><a href="#">内衣</a></li>
-                        </ul>
-                        </div>
-                        <div class="option-right">
-                            <a href="#">查看全部</a><i class="iconfont icon-arrow-right-bold"></i>
-                        </div>
-                    </div>
-                </div>
-                <div class="food-bd">
-                    <div class="food-bd-left">
-                        <img src="./uploads/colthes_left.png" alt="">
-                    </div>
-                    <div class="food-bd-right">
-                        <ul>
-                            <li>
-                            <a href="#">
-                                
-                                    <img src="./uploads/clothes1.png" alt="">
-                                    <div class="info">
-                                    <p>男女情侣抗菌夜视休闲跑鞋</p>
-                                    <p>36/37/38码</p>
-                                    <p>新款服饰</p>
-                                    </div>
-                                    <div class="price">
-                                        ￥ <p>719.00</p>
-                                    </div>
-                                </a>
-                                <div class="mask">找相似</div>
-                                </li>
-                            <li>
-                                <a href="#">
-                                
-                                    <img src="./uploads/clothes2.png" alt="">
-                            <div class="info">
-                                    <p>jessyline2022秋装专柜款</p>
-                                    <p>M码</p>
-                                    <p>新款服饰</p>
-                                    </div>
-                                    <div class="price">
-                                        ￥ <p>699.00</p>
-                                    </div>
-                                    </a>
-                                </li>
-                            <li>
-                                <a href="#">
-                                
-                                    <img src="./uploads/clothes3.png" alt="">
-                            <div class="info">
-                                    <p>高领纯羊毛针织打底衫毛衣</p>
-                                    <p>S/M/L码</p>
-                                    <p>新款服饰</p>
-                                    </div>
-                                    <div class="price">
-                                        ￥ <p>229.00</p>
-                                    </div>
-                                </a>
-                            </li>
-                            <li>
-                                <a href="#">
-                                
-                                    <img src="./uploads/clothes4.png" alt="">
-                            <div class="info">
-                                    <p>潮流文艺袜子女纯棉船袜</p>
-                                    <p>36-38</p>
-                                    <p>居家日用</p>
-                                    </div>
-                                    <div class="price">
-                                        ￥ <p>14.50</p>
-                                    </div>
-                                </a>
-                            </li>
-                            <li>
-                                <a href="#">
-                                
-                                    <img src="./uploads/clothes5.png" alt="">
-                            <div class="info">
-                                    <p>新款韩系设计感美背衬衫裙</p>
-                                    <p>M码 黑色</p>
-                                    <p>新款服饰</p>
-                                    </div>
-                                    <div class="price">
-                                        ￥ <p>179.00</p>
-                                    </div>
-                                </a>
-                            </li>
-                            <li>
-                                <a href="#">
-                                
-                                    <img src="./uploads/clothes6.png" alt="">
-                            <div class="info">
-                                    <p>水果面膜韩国蜂蜜柚子茶560g/瓶</p>
-                                    <p>冲调饮品</p>
-                                    <p></p>
-                                    </div>
-                                    <div class="price">
-                                        ￥ <p>69.00</p>
-                                    </div>
-                                </a>
-                            </li>
-                            <li>
-                                    <a href="#">
-                                    <img src="./uploads/clothes7.png" alt="">
-                            <div class="info">
-                                    <p>头层牛皮真皮百搭个性腰带</p>
-                                    <p>120cm</p>
-                                    <p>个性配饰</p>
-                                    </div>
-                                    <div class="price">
-                                        ￥ <p>99.99</p>
-                                    </div>
-                                </a>
-                            </li>
-                            <li>
-                                    <a href="#">
-                                    <img src="./uploads/clothes8.png" alt="">
-                            <div class="info">
-                                    <p>Descente迪桑特训练运动裤</p>
-                                    <p>标码 墨绿色/白色/蓝色</p>
-                                    <p>新款服饰</p>
-                                    </div>
-                                    <div class="price">
-                                        ￥ <p>269.00</p>
-                                    </div>
-                                </a>
-                            </li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-         </div>
-         <!-- 餐厨 -->
-          <div class="food">
-            <div class="w">
-                <div class="food-title box-hd">
-                    <h2>餐厨</h2>
-                    <div class="option">
-                        <div class="option-left">
-                        <ul>
-                            <li><a href="#">热门</a></li>
-                            <li><a href="#">厨具</a></li>
-                            <li><a href="#">水具</a></li>
-                            <li><a href="#">灯具</a></li>
-                            <li><a href="#">五金</a></li>
-                            <li><a href="#">家装材料</a></li>
-                            <li><a href="#">居家好物</a></li>
-                        </ul>
-                        </div>
-                        <div class="option-right">
-                            <a href="#">查看全部</a><i class="iconfont icon-arrow-right-bold"></i>
-                        </div>
-                    </div>
-                </div>
-                <div class="food-bd">
-                    <div class="food-bd-left">
-                        <img src="./uploads/kitchen_left.png" alt="">
-                    </div>
-                    <div class="food-bd-right">
-                        <ul>
-                            <li>
-                                    <a href="#">
-                                    <img src="./uploads/kitchen1.png" alt="">
-                                    <div class="info">
-                                    <p>紫砂茶漏茶渣茶叶过滤器</p>
-                                    <p>【禅意舍得】</p>
-                                    <p>居家好物</p>
-                                    </div>
-                                    <div class="price">
-                                        ￥ <p>210.00</p>
-                                    </div>
-                                </a>
-                            </li>
-                            <li>
-                                    <a href="#">
-                                    <img src="./uploads/kitchen2.png" alt="">
-                            <div class="info">
-                                    <p>简约贝壳果盘 零食收纳盘</p>
-                                    <p>【灰色】</p>
-                                    <p>居家好物</p>
-                                    </div>
-                                    <div class="price">
-                                        ￥ <p>32.99</p>
-                                    </div>
-                                </a>
-                            </li>
-                            <li>
-                                    <a href="#">
-                                    <img src="./uploads/kitchen3.png" alt="">
-                            <div class="info">
-                                    <p>电动打奶泡器咖啡奶泡机</p>
-                                    <p>KJBQ-4</p>
-                                    <p>居家好物</p>
-                                    </div>
-                                    <div class="price">
-                                        ￥ <p>30.00</p>
-                                    </div>
-                                </a>
-                            </li>
-                            <li>
-                                    <a href="#">
-                                    <img src="./uploads/kitchen4.png" alt="">
-                            <div class="info">
-                                    <p>哈尔斯保温壶大容量家用</p>
-                                    <p>304不锈钢</p>
-                                    <p>居家好物</p>
-                                    </div>
-                                    <div class="price">
-                                        ￥ <p>69.00</p>
-                                    </div>
-                                </a>
-                                </li>
-                                <li>
-                                    <a href="#">
-                                    <img src="./uploads/kitchen5.png" alt="">
-                            <div class="info">
-                                    <p>龙泉青瓷碗碟盘餐具套装</p>
-                                    <p>【碗+盘+杯子】</p>
-                                    <p>厨房好物</p>
-                                    </div>
-                                    <div class="price">
-                                        ￥ <p>99.99</p>
-                                    </div>
-                                </a>
-                            </li>
-                            <li>
-                                    <a href="#">
-                                    <img src="./uploads/kitchen6.png" alt="">
-                            <div class="info">
-                                    <p>戚风蛋糕模具家用套装</p>
-                                    <p>6/8胚子4寸</p>
-                                    <p>厨房好物</p>
-                                    </div>
-                                    <div class="price">
-                                        ￥ <p>35.00</p>
-                                    </div>
-                                </a>
-                            </li>
-                            <li>
-                                    <a href="#">
-                                    <img src="./uploads/kitchen7.png" alt="">
-                            <div class="info">
-                                    <p>托盘家用放茶杯水杯茶盘</p>
-                                    <p>水果餐盘</p>
-                                    <p>居家好物</p>
-                                    </div>
-                                    <div class="price">
-                                        ￥ <p>12.99</p>
-                                    </div>
-                                </a>
-                            </li>
-                            <li>
-                                    <a href="#">
-                                    <img src="./uploads/kitchen8.png" alt="">
-                            <div class="info">
-                                    <p>哈尔斯双层隔热便携水杯</p>
-                                    <p>橙色/绿色</p>
-                                    <p>居家好物</p>
-                                    </div>
-                                    <div class="price">
-                                        ￥ <p>56.99</p>
-                                    </div>
-                                </a>
-                            </li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-         </div>
-         <!-- 居家 -->
-         <div class="food">
-            <div class="w">
-                <div class="food-title box-hd">
-                    <h2>居家</h2>
-                    <div class="option">
-                        <div class="option-left">
-                        <ul>
-                            <li><a href="#">热门</a></li>
-                            <li><a href="#">鲜花生活</a></li>
-                            <li><a href="#">家纺</a></li>
-                            <li><a href="#">创意礼品</a></li>
-                            <li><a href="#">个性配饰</a></li>
-                            <li><a href="#">生活日用</a></li>
-                        </ul>
-                        </div>
-                        <div class="option-right">
-                            <a href="#">查看全部</a><i class="iconfont icon-arrow-right-bold"></i>
-                        </div>
-                    </div>
-                </div>
-                <div class="food-bd">
-                    <div class="food-bd-left">
-                        <img src="./uploads/home_left.png" alt="">
-                    </div>
-                    <div class="food-bd-right">
-                        <ul>
-                            <li>
-                                    <a href="#">
-                                    <img src="./uploads/home1.png" alt="">
-                                    <div class="info">
-                                    <p>极绒房间的彩虹全棉床单</p>
-                                    <p>《房间的彩虹》</p>
-                                    <p>床上用品</p>
-                                    </div>
-                                    <div class="price">
-                                        ￥ <p>59.00</p>
-                                    </div>
-                                </a>
-                            </li>
-                            <li>
-                                    <a href="#">
-                                    <img src="./uploads/home2.png" alt="">
-                            <div class="info">
-                                    <p>沃特曼毛绒玩具玩偶抱枕</p>
-                                    <p>23cm小号粉色70332</p>
-                                    <p>创意礼品</p>
-                                    </div>
-                                    <div class="price">
-                                        ￥ <p>39.00</p>
-                                    </div>
-                                </a>
-                            </li>
-                            <li>
-                                    <a href="#">
-                                    <img src="./uploads/home3.png" alt="">
-                            <div class="info">
-                                    <p>水培植物玻璃花瓶大</p>
-                                    <p>水养花瓶1903</p>
-                                    <p>鲜花生活</p>
-                                    </div>
-                                    <div class="price">
-                                        ￥ <p>19.90</p>
-                                    </div>
-                                </a>
-                            </li>
-                            <li>
-                                    <a href="#">
-                                    <img src="./uploads/home4.png" alt="">
-                            <div class="info">
-                                    <p>韩版网红仙女发圈小皮筋</p>
-                                    <p>森系头绳（三件套）</p>
-                                    <p>个性配饰</p>
-                                    </div>
-                                    <div class="price">
-                                        ￥ <p>29.90</p>
-                                    </div>
-                                </a>
-                            </li>
-                            <li>
-                                    <a href="#">
-                                    <img src="./uploads/home5.png" alt="">
-                            <div class="info">
-                                    <p>竖纹透明仿真干花插花花瓶</p>
-                                    <p>竖纹玻璃花瓶【透明】</p>
-                                    <p>鲜花生活</p>
-                                    </div>
-                                    <div class="price">
-                                        ￥ <p>29.90</p>
-                                    </div>
-                                </a>
-                            </li>
-                            <li>
-                                    <a href="#">
-                                    <img src="./uploads/home6.png" alt="">
-                            <div class="info">
-                                    <p>折叠简约家用简易书桌 </p>
-                                    <p>1.22米折叠桌二档【白色】</p>
-                                    <p>生活日用</p>
-                                    </div>
-                                    <div class="price">
-                                        ￥ <p>79.00</p>
-                                    </div>
-                                </a>
-                            </li>
-                            <li>
-                                    <a href="#">
-                                    <img src="./uploads/home7.png" alt="">
-                            <div class="info">
-                                    <p>自动吸水懒人花盆 </p>
-                                    <p>直径15cm</p>
-                                    <p>鲜花生活</p>
-                                    </div>
-                                    <div class="price">
-                                        ￥ <p>29.00</p>
-                                    </div>
-                                </li>
-                            </a>
-                            <li>
-                                    <a href="#">
-                                    <img src="./uploads/home8.png" alt="">
-                            <div class="info">
-                                    <p>百富帝byford碳化竹席枕套</p>
-                                    <p>单只装 48-74cm</p>
-                                    <p>床上用品</p>
-                                    </div>
-                                    <div class="price">
-                                        ￥ <p>39.00</p>
-                                    </div>
-                                </a>
-                            </li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-         </div>
-         <!-- 最新专题 -->
-          <div class="special">
-            <div class="w">
-                <div class="special-title">
-                    <h2>最新专题</h2>
-                    <div class="special-more"><a href="">查看更多</a><i class="iconfont icon-arrow-right-bold"></i></div>
-                </div>
-                <div class="special-bd">
-                    <ul>
-                        <li>
-                            <div class="img">
-                                <img src="./uploads/topic1.png" alt="">
-                        </div>
-                        <div class="info">
-                            <p>
-                                <span class="like"><i class="iconfont icon-fabulous"></i>1200</span>
-                                <span class="view"><i class="icnofont icon-browse"></i>1800</span>
-                            </p>
-                            <p>
-                                <span class="reply"><i class="iconfont icon-comment"></i>246</span>
-                            </p>
-                        </div>
-                    </li>
-                         <li>
-                            <div class="img">
-                                <img src="./uploads/topic2.png" alt="">
-                        </div>
-                        <div class="info">
-                            <p>
-                                <span class="like"><i class="iconfont icon-fabulous"></i>1200</span>
-                                <span class="view"><i class="icnofont icon-browse"></i>1800</span>
-                            </p>
-                            <p>
-                                <span class="reply"><i class="iconfont icon-comment"></i>246</span>
-                            </p>
-                        </div>
-                    </li>
-                         <li>
-                            <div class="img">
-                                <img src="./uploads/topic3.png" alt="">
-                        </div>
-                        <div class="info">
-                            <p>
-                                <span class="like"><i class="iconfont icon-fabulous"></i>1200</span>
-                                <span class="view"><i class="icnofont icon-browse"></i>1800</span>
-                            </p>
-                            <p>
-                                <span class="reply"><i class="iconfont icon-comment"></i>246</span>
-                            </p>
-                        </div>
-                    </li>
-                    </ul>
-                </div>
-            </div>
-            </div>
-          </div>
-     <!-- 2.网页的底部 -->
-      <footer class="footer">
-        <div class="w">
-            <!-- 口号模块 -->
-            <div class="slogan">
-                <ul>
-                    <li>
-                        <h5 class="one"></h5>
-                        <p>价格亲民</p>
-                </li>
-                    <li>
-                        <h5 class="two"></h5>
-                        <p>物流快捷</p>
-                </li>
-                    <li>
-                        <h5 class="three"></h5>
-                        <p>品质新鲜</p>
-                </li>
-                    <li>
-                        <h5 class="four"></h5>
-                        <p>售后无忧</p>
-                </li>
-                </ul>
-            </div>
-            <!-- 服务模块 -->
-            <div class="severice">
-                <div class="severice-left">
-                    <dl>
-                        <dt>购物指南</dt>
-                        <dd><a href="#">购物流程</a></dd>
-                        <dd><a href="#">购物流程</a></dd>
-                        <dd><a href="#">购物流程</a></dd>
-                    </dl>
-                    <dl>
-                        <dt>配送方式</dt>
-                        <dd><a href="#">配送运费</a></dd>
-                        <dd><a href="#">配送范围</a></dd>
-                        <dd><a href="#">配送时间</a></dd>
-                    </dl>
-                    <dl>
-                        <dt>关于我们</dt>
-                        <dd><a href="#">平台规则</a></dd>
-                        <dd><a href="#">联系我们</a></dd>
-                        <dd><a href="#">问题反馈</a></dd>
-                    </dl>
-                    <dl>
-                        <dt>售后服务</dt>
-                        <dd><a href="#">售后政策</a></dd>
-                        <dd><a href="#">退款说明</a></dd>
-                        <dd><a href="#">取消订单</a></dd>
-                    </dl>
-                    <dl>
-                        <dt>服务热线</dt>
-                        <dd><a href="#">在线客服 <i class="iconfont icon-customer-service"></i></a></dd>
-                        <dd><a href="#">客服电话 400-0000-000</a></dd>
-                        <dd><a href="#">工作时间 周一至周日 8:00-18:00</a></dd>
-                    </dl>
-                </div>
-                <div class="severice-right">
-                    <ul>
-                        <li>
-                            <img src="./images/wechat.png" alt="">
-                            <p>微信公众号</p>
-                        </li>
-                        <li>
-                            <img src="./images/app.png" alt="">
-                            <p>APP下载二维码</p>
-                        </li>
-                    </ul>
-                </div>
-            </div>
-            <!-- 版权模块 -->
-            <div class="copyright">
-                <p>
-                    <a href="#">关于我们</a>
-                        |  
-                    <a href="#">帮助中心</a>
-                        |  
-                    <a href="#">售后服务</a>
-                        |  
-                    <a href="#">商务合作</a>
-                        |  
-                    <a href="#">搜索推荐</a>
-                        |  
-                    <a href="#">友情链接</a></p>
-                <p>CopyRight © 小兔鲜</p>
-            </div>
-        </div>
-      </footer>
+        <div id="playlistContent"></div>
+    </div>
+
+    <audio id="audioPlayer" preload="metadata"></audio>
+
+    <script>
+        const audio = document.getElementById('audioPlayer');
+        const playBtn = document.getElementById('playBtn');
+        const cover = document.getElementById('albumCover');
+        const progressFill = document.getElementById('progressFill');
+        const progressBar = document.getElementById('progressBar');
+        const currentTimeEl = document.getElementById('currentTime');
+        const totalTimeEl = document.getElementById('totalTime');
+        const volumeSlider = document.getElementById('volumeSlider');
+        const volumeBtn = document.getElementById('volumeBtn');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const listBtn = document.getElementById('listBtn');
+        const playlist = document.getElementById('playlist');
+        const closeListBtn = document.getElementById('closeListBtn');
+        const playlistContent = document.getElementById('playlistContent');
+        const songTitleEl = document.getElementById('songTitle');
+        const songAuthorEl = document.getElementById('songAuthor');
+        const blurBg = document.getElementById('blurBg');
+        const playModeBtn = document.getElementById('playModeBtn');
+        const speedText = document.getElementById('speedText');
+
+        const songs = [
+            { 
+                name: "勇气", 
+                author: "梁静茹", 
+                src: "M5000019cLLA3rRmj2.mp3", 
+                img: "image2.png"
+            },
+            {
+              name: "七里香",
+              author: "周杰伦",
+              src: "M500004Z8Ihr0JIu5s.mp3",
+              img: "image.png"
+            },
+            {
+                name: "我们的明天",
+                author: "鹿晗",
+                src: "92424028.mp3",
+                img: "image3.png"
+            }
+        ];
+
+        let currentIndex = 0;
+        let playMode = 0;
+        let lastVolume = 1;
+
+        audio.addEventListener('loadedmetadata', () => {
+            if (!isNaN(audio.duration)) {
+                totalTimeEl.textContent = formatTime(audio.duration);
+            }
+        });
+
+        function initPlaylist() {
+            playlistContent.innerHTML = '';
+            songs.forEach((song, index) => {
+                const item = document.createElement('div');
+                item.className = 'playlist-item';
+                if (index === currentIndex) item.classList.add('active');
+                item.textContent = `${song.name} - ${song.author}`;
+                item.onclick = () => {
+                    loadSong(index);
+                    safePlay();
+                    updatePlaylistStyle();
+                };
+                playlistContent.appendChild(item);
+            });
+        }
+
+        function updatePlaylistStyle() {
+            document.querySelectorAll('.playlist-item').forEach((item, i) => {
+                item.classList.toggle('active', i === currentIndex);
+            });
+        }
+
+        // ========== 修复点：切歌前先暂停 ==========
+        function loadSong(index) {
+            audio.pause(); // 先停止当前歌曲
+            currentIndex = index;
+            const song = songs[index];
+            audio.src = song.src;
+            songTitleEl.textContent = song.name;
+            songAuthorEl.textContent = song.author;
+            blurBg.style.backgroundImage = `url('${song.img}')`;
+            cover.style.backgroundImage = `url('${song.img}')`;
+            progressFill.style.width = '0%';
+            updatePlaylistStyle();
+        }
+
+        function safePlay() {
+            audio.play().then(() => {
+                playBtn.textContent = "❚❚";
+                cover.className = 'rotate-playing';
+            }).catch(e => {
+                playBtn.textContent = "▶";
+                cover.className = 'rotate-paused';
+            });
+        }
+
+        playBtn.addEventListener('click', () => {
+            if (audio.paused) {
+                safePlay();
+            } else {
+                audio.pause();
+                playBtn.textContent = "▶";
+                cover.className = 'rotate-paused';
+            }
+        });
+
+        audio.addEventListener('timeupdate', () => {
+            if (!audio.duration) return;
+            const percent = (audio.currentTime / audio.duration) * 100;
+            progressFill.style.width = percent + '%';
+            currentTimeEl.textContent = formatTime(audio.currentTime);
+        });
+
+        progressBar.addEventListener('click', (e) => {
+            const rect = progressBar.getBoundingClientRect();
+            const pos = (e.clientX - rect.left) / rect.width;
+            if (audio.duration) audio.currentTime = pos * audio.duration;
+        });
+
+        volumeSlider.addEventListener('input', () => {
+            audio.volume = volumeSlider.value / 100;
+            volumeBtn.textContent = audio.volume === 0 ? '🔇' : '🔊';
+            lastVolume = audio.volume;
+        });
+
+        volumeBtn.addEventListener('click', () => {
+            if (audio.volume > 0) {
+                lastVolume = audio.volume;
+                audio.volume = 0;
+                volumeSlider.value = 0;
+                volumeBtn.textContent = '🔇';
+            } else {
+                audio.volume = lastVolume || 1;
+                volumeSlider.value = audio.volume * 100;
+                volumeBtn.textContent = '🔊';
+            }
+        });
+
+        // ========== 修复上一曲、下一曲 ==========
+        prevBtn.addEventListener('click', () => {
+            currentIndex = playMode === 2
+                ? Math.floor(Math.random() * songs.length)
+                : (currentIndex - 1 + songs.length) % songs.length;
+            loadSong(currentIndex);
+            safePlay();
+        });
+
+        nextBtn.addEventListener('click', () => {
+            currentIndex = playMode === 2
+                ? Math.floor(Math.random() * songs.length)
+                : (currentIndex + 1) % songs.length;
+            loadSong(currentIndex);
+            safePlay();
+        });
+
+        playModeBtn.addEventListener('click', () => {
+            playMode = (playMode + 1) % 3;
+            playModeBtn.textContent = [ '🔁', '🔂', '🔀' ][playMode];
+        });
+
+        audio.addEventListener('ended', () => {
+            if (playMode === 1) {
+                audio.currentTime = 0;
+                safePlay();
+            } else {
+                nextBtn.click();
+            }
+        });
+
+        speedText.addEventListener('click', () => {
+            const speeds = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0];
+            let i = speeds.indexOf(audio.playbackRate);
+            audio.playbackRate = speeds[(i + 1) % speeds.length];
+            speedText.textContent = audio.playbackRate + 'X';
+        });
+
+        listBtn.addEventListener('click', () => playlist.classList.add('active'));
+        closeListBtn.addEventListener('click', () => playlist.classList.remove('active'));
+
+        function formatTime(s) {
+            const m = String(Math.floor(s / 60)).padStart(2, '0');
+            const sec = String(Math.floor(s % 60)).padStart(2, '0');
+            return `${m}:${sec}`;
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            initPlaylist();
+            loadSong(0);
+            audio.volume = 1;
+        });
+    </script>
 </body>
 </html>
